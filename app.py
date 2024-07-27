@@ -21,6 +21,11 @@ def crop_image(img, ratio_width, ratio_height):
 
 
 def main():
+    st.set_page_config(
+        page_title="Bluprint Webp Crop and Convert",
+        page_icon="sunrise_over_mountains",
+        # layout="wide",
+    )
     st.title("Bluprint Webp Crop and Convert")
 
     ratio_options = ["1:1", "3:4", "4:3", "16:9", "9:16", "Custom"]
