@@ -26,13 +26,6 @@ def main():
         page_icon="sunrise_over_mountains",
         # layout="wide",
     )
-    st.markdown(
-        """
-            <!-- Global site tag (gtag.js) - Google Analytics -->
-            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1703094926709384"
-     crossorigin="anonymous"></script>
-        """, unsafe_allow_html=True)
-
     st.title("Bluprint Webp Crop and Convert")
 
     ratio_options = ["1:1", "3:4", "4:3", "16:9", "9:16", "Custom"]
