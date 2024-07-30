@@ -89,7 +89,7 @@ def main():
 
     watermark_option = st.checkbox("Add Watermark")
 
-    image_formats = ["heic", "heif", "png", "jpg", "jpeg", "ico", "tif", "tiff", "jp2"]
+    image_formats = ["heic", "heif", "png", "jpg", "jpeg", "ico", "tif", "tiff", "jp2", "bmp", "webp"]
 
     if watermark_option:
         with st.expander("Watermark Options", expanded=True, icon='📌'):
