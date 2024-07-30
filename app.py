@@ -2,6 +2,7 @@ import io
 
 import streamlit as st
 from PIL import Image, ImageEnhance
+import zipfile
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
@@ -61,6 +62,15 @@ def add_watermark(base_image, watermark, transparency, size_ratio, position):
     return watermarked_image
 
 
+def create_zip(images, filenames):
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+        for img_byte_arr, filename in zip(images, filenames):
+            zip_file.writestr(f'{filename}.webp', img_byte_arr.read())
+    zip_buffer.seek(0)
+    return zip_buffer
+
+
 def main():
     st.set_page_config(
         page_title="Bluprint Webp Crop and Convert",
@@ -89,6 +99,8 @@ def main():
 
     with st.expander("Advanced", icon='🛠'):
         quality = st.slider("Export Quality (default=80)", 0, 100, 80)
+        # exact = st.checkbox("Preserve Transparency")
+        preview_limit = st.number_input("Preview Limit", min_value=0, value=1)
 
     watermark_option = st.checkbox("Add Watermark")
 
@@ -99,11 +111,15 @@ def main():
             watermark_file = st.file_uploader("Upload Watermark", type=image_formats)
             transparency = st.slider("Set Watermark Transparency", 0.0, 1.0, 0.5)
             size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0, 0.20)
-            position = st.selectbox("Select Watermark Position", ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"])
+            position = st.selectbox("Select Watermark Position",
+                                    ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"])
 
     uploaded_files = st.file_uploader("Choose images...", type=image_formats, accept_multiple_files=True)
 
     if uploaded_files:
+        images = []
+        filenames = {}
+
         for uploaded_file in uploaded_files:
             img = Image.open(uploaded_file)
             # st.image(img, caption=f'Uploaded Image: {uploaded_file.name}', use_column_width=True)
@@ -114,18 +130,39 @@ def main():
                 watermark = Image.open(watermark_file)
                 cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position)
 
-            # Convert to WebP
             img_byte_arr = io.BytesIO()
             cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
             img_byte_arr.seek(0)
 
-            st.image(cropped_img, caption=f'Result of: {uploaded_file.name}', use_column_width=True)
+            if preview_limit:
+                st.image(cropped_img, caption=f'Result of: {uploaded_file.name}', use_column_width=True)
+                preview_limit -= 1
 
+            name = uploaded_file.name
+            duplicate_name_num = 1
+            while name in filenames:
+                name = f"{uploaded_file.name} ({duplicate_name_num})"
+                duplicate_name_num += 1
+
+            images.append(img_byte_arr)
+            filenames[name] = None
+
+        if len(images) == 1:
+            first_name = next(iter(filenames))
             st.download_button(
-                label=f"Download {uploaded_file.name}.webp",
-                data=img_byte_arr,
-                file_name=f"{uploaded_file.name}.webp",
+                label=f"Download {first_name}.webp",
+                data=images[0],
+                file_name=f"{first_name}.webp",
                 mime="image/webp"
+            )
+        else:
+            # Create zip file
+            zip_buffer = create_zip(images, filenames)
+            st.download_button(
+                label="Download All Exported Images as ZIP",
+                data=zip_buffer,
+                file_name="exported_images.zip",
+                mime="application/zip"
             )
 
 
