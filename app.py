@@ -87,6 +87,9 @@ def main():
         }
         ratio_width, ratio_height = ratio_map[selected_ratio]
 
+    with st.expander("Advanced", icon='🛠'):
+        quality = st.slider("Export Quality (default=80)", 0, 100, 80)
+
     watermark_option = st.checkbox("Add Watermark")
 
     image_formats = ["heic", "heif", "png", "jpg", "jpeg", "ico", "tif", "tiff", "jp2", "bmp", "webp"]
@@ -113,10 +116,10 @@ def main():
 
             # Convert to WebP
             img_byte_arr = io.BytesIO()
-            cropped_img.save(img_byte_arr, format='WEBP')
+            cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
             img_byte_arr.seek(0)
 
-            st.image(cropped_img, caption=f'Cropped Image: {uploaded_file.name}', use_column_width=True)
+            st.image(cropped_img, caption=f'Result of: {uploaded_file.name}', use_column_width=True)
 
             st.download_button(
                 label=f"Download {uploaded_file.name}.webp",
