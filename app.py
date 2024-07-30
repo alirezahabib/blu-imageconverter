@@ -2,6 +2,9 @@ import io
 
 import streamlit as st
 from PIL import Image, ImageEnhance
+from pillow_heif import register_heif_opener
+
+register_heif_opener()
 
 
 def crop_image(img, ratio_width, ratio_height):
@@ -21,7 +24,7 @@ def crop_image(img, ratio_width, ratio_height):
     return img.crop((left, top, right, bottom))
 
 
-def add_watermark(base_image, watermark, transparency, size_ratio):
+def add_watermark(base_image, watermark, transparency, size_ratio, position):
     # Maintain aspect ratio and fit watermark within the base image
     base_width, base_height = base_image.size
     watermark_width, watermark_height = watermark.size
@@ -40,8 +43,16 @@ def add_watermark(base_image, watermark, transparency, size_ratio):
     alpha = ImageEnhance.Brightness(alpha).enhance(transparency)
     watermark.putalpha(alpha)
 
-    # Position watermark at the bottom right corner
-    watermark_position = (base_width - watermark.width, base_height - watermark.height)
+    # Position watermark
+    watermark_positions = {
+        "↘️ bottom right": (base_image.width - watermark.width, base_image.height - watermark.height),
+        "↙️ bottom left️": (0, base_image.height - watermark.height),
+        "↗️ top right": (base_image.width - watermark.width, 0),
+        "↖️ top left": (0, 0),
+        "⏺️ center": ((base_image.width - watermark.width) // 2, (base_image.height - watermark.height) // 2)
+    }
+    # Position watermark
+    watermark_position = watermark_positions.get(position, "↘️ bottom right")
 
     # Create a new image for the result
     watermarked_image = base_image.copy()
@@ -78,13 +89,16 @@ def main():
 
     watermark_option = st.checkbox("Add Watermark")
 
+    image_formats = ["heic", "heif", "png", "jpg", "jpeg", "ico", "tif", "tiff", "jp2"]
+
     if watermark_option:
         with st.expander("Watermark Options", expanded=True, icon='📌'):
-            watermark_file = st.file_uploader("Upload Watermark", type=["png", "jpg", "jpeg"])
+            watermark_file = st.file_uploader("Upload Watermark", type=image_formats)
             transparency = st.slider("Set Watermark Transparency", 0.0, 1.0, 0.5)
             size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0, 0.20)
+            position = st.selectbox("Select Watermark Position", ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"])
 
-    uploaded_files = st.file_uploader("Choose images...", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Choose images...", type=image_formats, accept_multiple_files=True)
 
     if uploaded_files:
         for uploaded_file in uploaded_files:
@@ -95,7 +109,7 @@ def main():
 
             if watermark_option and watermark_file:
                 watermark = Image.open(watermark_file)
-                cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio)
+                cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position)
 
             # Convert to WebP
             img_byte_arr = io.BytesIO()
@@ -105,9 +119,9 @@ def main():
             st.image(cropped_img, caption=f'Cropped Image: {uploaded_file.name}', use_column_width=True)
 
             st.download_button(
-                label=f"Download {uploaded_file.name}_cropped.webp",
+                label=f"Download {uploaded_file.name}.webp",
                 data=img_byte_arr,
-                file_name=f"{uploaded_file.name}_cropped.webp",
+                file_name=f"{uploaded_file.name}.webp",
                 mime="image/webp"
             )
 
