@@ -1,0 +1,11 @@
+services:
+  app:
+    build:
+      context: https://github.com/alirezahabib/blu-imageconverter.git
+    container_name: blu-imageconverter
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
