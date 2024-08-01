@@ -4,6 +4,7 @@ import streamlit as st
 from PIL import Image, ImageEnhance
 import zipfile
 from pillow_heif import register_heif_opener
+from os.path import splitext
 
 register_heif_opener()
 
@@ -25,7 +26,7 @@ def crop_image(img, ratio_width, ratio_height):
     return img.crop((left, top, right, bottom))
 
 
-def add_watermark(base_image, watermark, transparency, size_ratio, position):
+def add_watermark(base_image, watermark, transparency, size_ratio, position, padding=0):
     # Maintain aspect ratio and fit watermark within the base image
     base_width, base_height = base_image.size
     watermark_width, watermark_height = watermark.size
@@ -44,15 +45,19 @@ def add_watermark(base_image, watermark, transparency, size_ratio, position):
     alpha = ImageEnhance.Brightness(alpha).enhance(transparency)
     watermark.putalpha(alpha)
 
-    # Position watermark
+    # Calculate padding in pixels
+    padding_x = int(base_width * padding)
+    padding_y = int(base_height * padding)
+
+    # Position watermark with padding
     watermark_positions = {
-        "↘️ bottom right": (base_image.width - watermark.width, base_image.height - watermark.height),
-        "↙️ bottom left️": (0, base_image.height - watermark.height),
-        "↗️ top right": (base_image.width - watermark.width, 0),
-        "↖️ top left": (0, 0),
+        "↘️ bottom right": (base_image.width - watermark.width - padding_x, base_image.height - watermark.height - padding_y),
+        "↙️ bottom left️": (padding_x, base_image.height - watermark.height - padding_y),
+        "↗️ top right": (base_image.width - watermark.width - padding_x, padding_y),
+        "↖️ top left": (padding_x, padding_y),
         "⏺️ center": ((base_image.width - watermark.width) // 2, (base_image.height - watermark.height) // 2)
     }
-    # Position watermark
+
     watermark_position = watermark_positions.get(position, "↘️ bottom right")
 
     # Create a new image for the result
@@ -113,6 +118,10 @@ def main():
             size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0, 0.20)
             position = st.selectbox("Select Watermark Position",
                                     ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"])
+            if position == "⏺️ center":
+                padding = 0
+            else:
+                padding = st.slider("Set Watermark Padding", 0.0, 0.5, 0.05)
 
     uploaded_files = st.file_uploader("Choose images...", type=image_formats, accept_multiple_files=True)
 
@@ -121,31 +130,34 @@ def main():
         filenames = {}
 
         for uploaded_file in uploaded_files:
-            img = Image.open(uploaded_file)
-            # st.image(img, caption=f'Uploaded Image: {uploaded_file.name}', use_column_width=True)
+            try:
+                img = Image.open(uploaded_file)
+                # st.image(img, caption=f'Uploaded Image: {uploaded_file.name}', use_column_width=True)
+                cropped_img = crop_image(img, ratio_width, ratio_height)
 
-            cropped_img = crop_image(img, ratio_width, ratio_height)
+                if watermark_option and watermark_file:
+                    watermark = Image.open(watermark_file)
+                    cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
 
-            if watermark_option and watermark_file:
-                watermark = Image.open(watermark_file)
-                cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position)
+                img_byte_arr = io.BytesIO()
+                cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
+                img_byte_arr.seek(0)
 
-            img_byte_arr = io.BytesIO()
-            cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
-            img_byte_arr.seek(0)
+                if preview_limit:
+                    st.image(cropped_img, caption=f'Result of: {uploaded_file.name}', use_column_width=True)
+                    preview_limit -= 1
 
-            if preview_limit:
-                st.image(cropped_img, caption=f'Result of: {uploaded_file.name}', use_column_width=True)
-                preview_limit -= 1
+                original_name = splitext(uploaded_file.name)[0]
+                name = original_name
+                duplicate_name_num = 1
+                while name in filenames:
+                    name = f"{original_name} ({duplicate_name_num})"
+                    duplicate_name_num += 1
 
-            name = uploaded_file.name
-            duplicate_name_num = 1
-            while name in filenames:
-                name = f"{uploaded_file.name} ({duplicate_name_num})"
-                duplicate_name_num += 1
-
-            images.append(img_byte_arr)
-            filenames[name] = None
+                images.append(img_byte_arr)
+                filenames[name] = None
+            except Exception as e:
+                st.error(f"Error processing {uploaded_file.name}: {e}")
 
         if len(images) == 1:
             first_name = next(iter(filenames))
