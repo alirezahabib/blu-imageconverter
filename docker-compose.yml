@@ -3,6 +3,7 @@ services:
     build:
       context: https://github.com/alirezahabib/blu-imageconverter.git
     container_name: blu-imageconverter
+    restart: always
     ports:
       - "8501:8501"
     environment:
