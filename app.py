@@ -109,8 +109,6 @@ def main():
     with st.expander("Advanced", icon='🛠'):
         quality = st.slider("Export Quality (default=80)", 0, 100, 80)
         # exact = st.checkbox("Preserve Transparency")
-        # preview_limit = st.number_input("Preview Limit", min_value=0, value=1)
-        preview_limit = 1
 
     watermark_option = st.checkbox("Add Watermark")
 
@@ -119,7 +117,8 @@ def main():
     if watermark_option:
         with st.expander("Watermark Options", expanded=True, icon='📌'):
             selected_preset = st.selectbox("Set Watermark Preset", ['Custom'] + asset_list)
-            watermark_file = st.file_uploader("Upload Watermark", type=image_formats, disabled=selected_preset != "Custom")
+            watermark_file = st.file_uploader("Upload Watermark", type=image_formats,
+                                              disabled=selected_preset != "Custom")
             if selected_preset != "Custom":
                 watermark_file = f"./assets/{selected_preset}/logo/logo.png"
             if watermark_file:
@@ -127,8 +126,10 @@ def main():
             if selected_preset != "Custom":
                 st.image(watermark_file, caption=f'Watermark: {selected_preset}', use_column_width=True)
 
-            transparency = st.slider("Set Watermark Transparency", 0.0, 1.0, presets.get(selected_preset, {}).get("transparency", 0.5))
-            size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0, presets.get(selected_preset, {}).get("size_ratio", 0.20))
+            transparency = st.slider("Set Watermark Transparency", 0.0, 1.0,
+                                     presets.get(selected_preset, {}).get("transparency", 0.5))
+            size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0,
+                                   presets.get(selected_preset, {}).get("size_ratio", 0.20))
             position = st.selectbox("Select Watermark Position",
                                     ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"],
                                     index=presets.get(selected_preset, {}).get("position", 0))
@@ -139,48 +140,59 @@ def main():
 
     uploaded_files = st.file_uploader("Choose images...", type=image_formats, accept_multiple_files=True)
 
+    images = []
+    filenames = {}
+
     if uploaded_files:
-        images = []
-        filenames = {}
+        try:
+            img = Image.open(uploaded_files[0])
+            cropped_img = crop_image(img, ratio_width, ratio_height)
+            if watermark_option and watermark_file:
+                cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
+            img_byte_arr = io.BytesIO()
+            cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
+            img_byte_arr.seek(0)
 
-        for uploaded_file in uploaded_files:
-            try:
-                img = Image.open(uploaded_file)
-                # st.image(img, caption=f'Uploaded Image: {uploaded_file.name}', use_column_width=True)
-                cropped_img = crop_image(img, ratio_width, ratio_height)
+            st.image(cropped_img, caption=f'Result of: {uploaded_files[0].name}', use_column_width=True)
 
-                if watermark_option and watermark_file:
-                    cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
+            original_name = splitext(uploaded_files[0].name)[0]
+            name = original_name
+            duplicate_name_num = 1
+            while name in filenames:
+                name = f"{original_name} ({duplicate_name_num})"
+                duplicate_name_num += 1
 
-                img_byte_arr = io.BytesIO()
-                cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
-                img_byte_arr.seek(0)
+            images.append(img_byte_arr)
+            filenames[name] = None
 
-                if preview_limit:
-                    st.image(cropped_img, caption=f'Result of: {uploaded_file.name}', use_column_width=True)
-                    preview_limit -= 1
+        except Exception as e:
+            st.error(f"Error processing {uploaded_files[0].name}: {e}")
 
-                original_name = splitext(uploaded_file.name)[0]
-                name = original_name
-                duplicate_name_num = 1
-                while name in filenames:
-                    name = f"{original_name} ({duplicate_name_num})"
-                    duplicate_name_num += 1
+        if len(uploaded_files) > 1 and st.button("Export All"):
+            for uploaded_file in uploaded_files[1:]:
+                try:
+                    img = Image.open(uploaded_file)
+                    cropped_img = crop_image(img, ratio_width, ratio_height)
 
-                images.append(img_byte_arr)
-                filenames[name] = None
-            except Exception as e:
-                st.error(f"Error processing {uploaded_file.name}: {e}")
+                    if watermark_option and watermark_file:
+                        cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
 
-        if len(images) == 1:
-            first_name = next(iter(filenames))
-            st.download_button(
-                label=f"Download {first_name}.webp",
-                data=images[0],
-                file_name=f"{first_name}.webp",
-                mime="image/webp"
-            )
-        else:
+                    img_byte_arr = io.BytesIO()
+                    cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
+                    img_byte_arr.seek(0)
+
+                    original_name = splitext(uploaded_file.name)[0]
+                    name = original_name
+                    duplicate_name_num = 1
+                    while name in filenames:
+                        name = f"{original_name} ({duplicate_name_num})"
+                        duplicate_name_num += 1
+
+                    images.append(img_byte_arr)
+                    filenames[name] = None
+                except Exception as e:
+                    st.error(f"Error processing {uploaded_file.name}: {e}")
+
             # Create zip file
             zip_buffer = create_zip(images, filenames)
             st.download_button(
@@ -188,6 +200,15 @@ def main():
                 data=zip_buffer,
                 file_name="exported_images.zip",
                 mime="application/zip"
+            )
+
+        if len(uploaded_files) == 1:
+            first_name = next(iter(filenames))
+            st.download_button(
+                label=f"Download {first_name}.webp",
+                data=images[0],
+                file_name=f"{first_name}.webp",
+                mime="image/webp"
             )
 
 
