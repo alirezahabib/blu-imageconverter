@@ -5,6 +5,10 @@ from PIL import Image, ImageEnhance
 import zipfile
 from pillow_heif import register_heif_opener
 from os.path import splitext
+from presets import presets
+from pathlib import Path
+
+asset_list = directories = [d.name for d in Path('./assets').iterdir() if d.is_dir()]
 
 register_heif_opener()
 
@@ -105,7 +109,8 @@ def main():
     with st.expander("Advanced", icon='🛠'):
         quality = st.slider("Export Quality (default=80)", 0, 100, 80)
         # exact = st.checkbox("Preserve Transparency")
-        preview_limit = st.number_input("Preview Limit", min_value=0, value=1)
+        # preview_limit = st.number_input("Preview Limit", min_value=0, value=1)
+        preview_limit = 1
 
     watermark_option = st.checkbox("Add Watermark")
 
@@ -113,11 +118,20 @@ def main():
 
     if watermark_option:
         with st.expander("Watermark Options", expanded=True, icon='📌'):
-            watermark_file = st.file_uploader("Upload Watermark", type=image_formats)
-            transparency = st.slider("Set Watermark Transparency", 0.0, 1.0, 0.5)
-            size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0, 0.20)
+            selected_preset = st.selectbox("Set Watermark Preset", ['Custom'] + asset_list)
+            watermark_file = st.file_uploader("Upload Watermark", type=image_formats, disabled=selected_preset != "Custom")
+            if selected_preset != "Custom":
+                watermark_file = f"./assets/{selected_preset}/logo/logo.png"
+            if watermark_file:
+                watermark = Image.open(watermark_file)
+            if selected_preset != "Custom":
+                st.image(watermark_file, caption=f'Watermark: {selected_preset}', use_column_width=True)
+
+            transparency = st.slider("Set Watermark Transparency", 0.0, 1.0, presets.get(selected_preset, {}).get("transparency", 0.5))
+            size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0, presets.get(selected_preset, {}).get("size_ratio", 0.20))
             position = st.selectbox("Select Watermark Position",
-                                    ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"])
+                                    ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"],
+                                    index=presets.get(selected_preset, {}).get("position", 0))
             if position == "⏺️ center":
                 padding = 0
             else:
@@ -136,7 +150,6 @@ def main():
                 cropped_img = crop_image(img, ratio_width, ratio_height)
 
                 if watermark_option and watermark_file:
-                    watermark = Image.open(watermark_file)
                     cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
 
                 img_byte_arr = io.BytesIO()
