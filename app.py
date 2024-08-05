@@ -124,7 +124,7 @@ def main():
             if watermark_file:
                 watermark = Image.open(watermark_file)
             if selected_preset != "Custom":
-                st.image(watermark_file, caption=f'Watermark: {selected_preset}', use_column_width=True)
+                st.image(watermark_file, use_column_width=True)
 
             transparency = st.slider("Set Watermark Transparency", 0.0, 1.0,
                                      presets.get(selected_preset, {}).get("transparency", 0.5))
@@ -169,6 +169,8 @@ def main():
             st.error(f"Error processing {uploaded_files[0].name}: {e}")
 
         if len(uploaded_files) > 1 and st.button("Export All"):
+            st.info("Exporting all images...")
+
             for uploaded_file in uploaded_files[1:]:
                 try:
                     img = Image.open(uploaded_file)
