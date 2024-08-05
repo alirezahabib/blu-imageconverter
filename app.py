@@ -1,14 +1,15 @@
 import io
+import zipfile
+from os.path import splitext
+from pathlib import Path
 
 import streamlit as st
 from PIL import Image, ImageEnhance
-import zipfile
 from pillow_heif import register_heif_opener
-from os.path import splitext
-from presets import presets
-from pathlib import Path
 
-asset_list = directories = [d.name for d in Path('./assets').iterdir() if d.is_dir()]
+from presets import presets
+
+asset_list = directories = ['Custom'] + [d.name for d in Path('./assets').iterdir() if d.is_dir()]
 
 register_heif_opener()
 
@@ -30,7 +31,7 @@ def crop_image(img, ratio_width, ratio_height):
     return img.crop((left, top, right, bottom))
 
 
-def add_watermark(base_image, watermark, transparency, size_ratio, position, padding=0):
+def add_watermark(base_image, watermark, transparency, size_ratio, position, padding=0, fill=False):
     # Maintain aspect ratio and fit watermark within the base image
     base_width, base_height = base_image.size
     watermark_width, watermark_height = watermark.size
@@ -38,7 +39,11 @@ def add_watermark(base_image, watermark, transparency, size_ratio, position, pad
     max_width = int(base_width * size_ratio)
     max_height = int(base_height * size_ratio)
 
-    ratio = min(max_width / watermark_width, max_height / watermark_height)
+    if fill:
+        ratio = max(max_width / watermark_width, max_height / watermark_height)
+    else:
+        ratio = min(max_width / watermark_width, max_height / watermark_height)
+
     new_size = (int(watermark_width * ratio), int(watermark_height * ratio))
 
     watermark = watermark.resize(new_size, Image.Resampling.LANCZOS)
@@ -55,14 +60,15 @@ def add_watermark(base_image, watermark, transparency, size_ratio, position, pad
 
     # Position watermark with padding
     watermark_positions = {
-        "↘️ bottom right": (base_image.width - watermark.width - padding_x, base_image.height - watermark.height - padding_y),
+        "↘️ bottom right": (
+            base_image.width - watermark.width - padding_x, base_image.height - watermark.height - padding_y),
         "↙️ bottom left️": (padding_x, base_image.height - watermark.height - padding_y),
         "↗️ top right": (base_image.width - watermark.width - padding_x, padding_y),
         "↖️ top left": (padding_x, padding_y),
         "⏺️ center": ((base_image.width - watermark.width) // 2, (base_image.height - watermark.height) // 2)
     }
 
-    watermark_position = watermark_positions.get(position, "↘️ bottom right")
+    watermark_position = watermark_positions.get(position, "↖️ top left")
 
     # Create a new image for the result
     watermarked_image = base_image.copy()
@@ -113,32 +119,50 @@ def main():
     watermark_option = st.checkbox("Add Watermark")
 
     image_formats = ["heic", "heif", "png", "jpg", "jpeg", "ico", "tif", "tiff", "jp2", "bmp", "webp"]
+    selected_preset = 'Custom'
 
     if watermark_option:
         with st.expander("Watermark Options", expanded=True, icon='📌'):
-            selected_preset = st.selectbox("Set Watermark Preset", ['Custom'] + asset_list)
+            selected_preset = st.selectbox("Set Watermark Preset", asset_list)
             watermark_file = st.file_uploader("Upload Watermark", type=image_formats,
                                               disabled=selected_preset != "Custom")
-            if selected_preset != "Custom":
-                watermark_file = f"./assets/{selected_preset}/logo/logo.png"
+            if selected_preset != 'Custom':
+                watermark_file = f'./assets/{selected_preset}/logo/logo.png'
             if watermark_file:
                 watermark = Image.open(watermark_file)
-            if selected_preset != "Custom":
+            if selected_preset != 'Custom':
                 st.image(watermark_file, use_column_width=True)
 
-            transparency = st.slider("Set Watermark Transparency", 0.0, 1.0,
-                                     presets.get(selected_preset, {}).get("transparency", 0.5))
-            size_ratio = st.slider("Set Watermark Size Ratio", 0.0, 1.0,
-                                   presets.get(selected_preset, {}).get("size_ratio", 0.20))
-            position = st.selectbox("Select Watermark Position",
-                                    ["↘️ bottom right", "↙️ bottom left️", "↗️ top right", "↖️ top left", "⏺️ center"],
-                                    index=presets.get(selected_preset, {}).get("position", 0))
+            transparency = st.slider('Set Watermark Transparency', 0.0, 1.0,
+                                     presets.get(selected_preset, {}).get('transparency', 0.5))
+            size_ratio = st.slider('Set Watermark Size Ratio', 0.0, 1.0,
+                                   presets.get(selected_preset, {}).get('size_ratio', 0.20))
+            position = st.selectbox('Select Watermark Position',
+                                    ['↘️ bottom right', '↙️ bottom left️', '↗️ top right', '↖️ top left', '⏺️ center'],
+                                    index=presets.get(selected_preset, {}).get('position', 0))
             if position == "⏺️ center":
                 padding = 0
             else:
-                padding = st.slider("Set Watermark Padding", 0.0, 0.5, 0.05)
+                padding = st.slider('Set Watermark Padding', 0.0, 0.5, 0.05)
 
-    uploaded_files = st.file_uploader("Choose images...", type=image_formats, accept_multiple_files=True)
+    pattern_option = st.checkbox('Add Pattern')
+
+    if pattern_option:
+        with st.expander('Pattern Options', expanded=True, icon='🎨'):
+            selected_pattern = st.selectbox('Set Pattern Preset', asset_list, index=asset_list.index(selected_preset))
+            pattern_file = st.file_uploader('Upload Pattern', type=image_formats,
+                                            disabled=selected_pattern != 'Custom')
+            if selected_pattern != 'Custom':
+                pattern_file = f'./assets/{selected_pattern}/pattern/pattern.png'
+            if pattern_file:
+                pattern = Image.open(pattern_file)
+            if selected_preset != 'Custom':
+                st.image(pattern_file, use_column_width=True)
+
+            pattern_transparency = st.slider('Set Pattern Transparency', 0.0, 1.0,
+                                             presets.get(selected_pattern, {}).get('transparency', 0.5))
+
+    uploaded_files = st.file_uploader('Choose images...', type=image_formats, accept_multiple_files=True)
 
     images = []
     filenames = {}
@@ -147,8 +171,13 @@ def main():
         try:
             img = Image.open(uploaded_files[0])
             cropped_img = crop_image(img, ratio_width, ratio_height)
+
+            if pattern_option and pattern_file:
+                cropped_img = add_watermark(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
+
             if watermark_option and watermark_file:
                 cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
+
             img_byte_arr = io.BytesIO()
             cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
             img_byte_arr.seek(0)
@@ -159,22 +188,25 @@ def main():
             name = original_name
             duplicate_name_num = 1
             while name in filenames:
-                name = f"{original_name} ({duplicate_name_num})"
+                name = f'{original_name} ({duplicate_name_num})'
                 duplicate_name_num += 1
 
             images.append(img_byte_arr)
             filenames[name] = None
 
         except Exception as e:
-            st.error(f"Error processing {uploaded_files[0].name}: {e}")
+            st.error(f'Error processing {uploaded_files[0].name}: {e}')
 
-        if len(uploaded_files) > 1 and st.button("Export All"):
-            st.info("Exporting all images...")
+        if len(uploaded_files) > 1 and st.button('Export All'):
+            st.info('Exporting all images...')
 
             for uploaded_file in uploaded_files[1:]:
                 try:
                     img = Image.open(uploaded_file)
                     cropped_img = crop_image(img, ratio_width, ratio_height)
+
+                    if pattern_option and pattern_file:
+                        cropped_img = add_watermark(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
 
                     if watermark_option and watermark_file:
                         cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
@@ -193,15 +225,15 @@ def main():
                     images.append(img_byte_arr)
                     filenames[name] = None
                 except Exception as e:
-                    st.error(f"Error processing {uploaded_file.name}: {e}")
+                    st.error(f'Error processing {uploaded_file.name}: {e}')
 
             # Create zip file
             zip_buffer = create_zip(images, filenames)
             st.download_button(
-                label="Download All Exported Images as ZIP",
+                label='Download exported_images.zip',
                 data=zip_buffer,
-                file_name="exported_images.zip",
-                mime="application/zip"
+                file_name='exported_images.zip',
+                mime='application/zip'
             )
 
         if len(uploaded_files) == 1:
