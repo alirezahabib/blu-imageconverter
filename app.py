@@ -6,6 +6,10 @@ from pathlib import Path
 import streamlit as st
 from PIL import Image, ImageEnhance
 from pillow_heif import register_heif_opener
+import streamlit_authenticator as stauth
+
+import yaml
+from yaml.loader import SafeLoader
 
 from presets import presets
 
@@ -31,7 +35,7 @@ def crop_image(img, ratio_width, ratio_height):
     return img.crop((left, top, right, bottom))
 
 
-def add_watermark(base_image, watermark, transparency, size_ratio, position, padding=0, fill=False):
+def add_on_top(base_image, watermark, transparency, size_ratio, position, padding=0, fill=False):
     # Maintain aspect ratio and fit watermark within the base image
     base_width, base_height = base_image.size
     watermark_width, watermark_height = watermark.size
@@ -87,13 +91,6 @@ def create_zip(images, filenames):
 
 
 def main():
-    st.set_page_config(
-        page_title="Bluprint Webp Crop and Convert",
-        page_icon="sunrise_over_mountains",
-        # layout="wide",
-    )
-    st.title("Bluprint Webp Crop and Convert")
-
     ratio_options = ["1:1", "4:3", "3:4", "16:9", "9:16", "2:1", "1:2", "Custom"]
     selected_ratio = st.selectbox("Select Aspect Ratio (width:height)", ratio_options)
 
@@ -173,10 +170,10 @@ def main():
             cropped_img = crop_image(img, ratio_width, ratio_height)
 
             if pattern_option and pattern_file:
-                cropped_img = add_watermark(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
+                cropped_img = add_on_top(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
 
             if watermark_option and watermark_file:
-                cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
+                cropped_img = add_on_top(cropped_img, watermark, transparency, size_ratio, position, padding)
 
             img_byte_arr = io.BytesIO()
             cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
@@ -206,10 +203,10 @@ def main():
                     cropped_img = crop_image(img, ratio_width, ratio_height)
 
                     if pattern_option and pattern_file:
-                        cropped_img = add_watermark(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
+                        cropped_img = add_on_top(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
 
                     if watermark_option and watermark_file:
-                        cropped_img = add_watermark(cropped_img, watermark, transparency, size_ratio, position, padding)
+                        cropped_img = add_on_top(cropped_img, watermark, transparency, size_ratio, position, padding)
 
                     img_byte_arr = io.BytesIO()
                     cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
@@ -227,7 +224,6 @@ def main():
                 except Exception as e:
                     st.error(f'Error processing {uploaded_file.name}: {e}')
 
-            # Create zip file
             zip_buffer = create_zip(images, filenames)
             st.download_button(
                 label='Download exported_images.zip',
@@ -247,4 +243,39 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    st.set_page_config(
+        page_title="Bluprint Webp Crop and Convert",
+        page_icon="sunrise_over_mountains",
+        # layout="wide",
+    )
+    st.title("Bluprint Webp Crop and Convert")
+
+    with open('./users.yaml') as file:
+        config = yaml.load(file, Loader=SafeLoader)
+
+    authenticator = stauth.Authenticate(
+        config['credentials'],
+        config['cookie']['name'],
+        config['cookie']['key'],
+        config['cookie']['expiry_days'],
+        config['preauthorized']
+    )
+
+    name, authentication_status, username = authenticator.login('main')
+
+    if authentication_status:
+        if username == 'admin':
+            st.write('You are logged in as an admin')
+            st.write('You can add, remove, or modify presets')
+        else:
+            main()
+
+        st.divider()
+        st.write(f'Logged in as *{name}*')
+        authenticator.logout('Logout', 'main')
+    elif authentication_status is None:
+        st.info('Please enter your username and password')
+    elif not authentication_status:
+        st.error('Username/password is incorrect')
+
+    st.write("Made with ❤️ at [Bluprint](https://bluprint.ir)")
