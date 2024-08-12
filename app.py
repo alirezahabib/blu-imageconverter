@@ -22,7 +22,9 @@ assets_dir = Path('./assets')
 
 # Get the list of assets (presets)
 def get_asset_list():
-    return [d.name for d in assets_dir.iterdir() if d.is_dir()]
+    asset_list = [d.name for d in assets_dir.iterdir() if d.is_dir()]
+    asset_list.sort()  # Sort inplace (better performance than sorted())
+    return asset_list
 
 
 def crop_image(img, ratio_width, ratio_height):

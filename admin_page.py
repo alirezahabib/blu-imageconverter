@@ -7,8 +7,9 @@ assets_dir = Path('./assets')
 
 
 def get_asset_list():
-    return [d.name for d in assets_dir.iterdir() if d.is_dir()]
-
+    asset_list = [d.name for d in assets_dir.iterdir() if d.is_dir()]
+    asset_list.sort()  # Sort inplace (better performance than sorted())
+    return asset_list
 
 # Upload and save a new file to a preset directory
 def upload_file(directory, file_type):
