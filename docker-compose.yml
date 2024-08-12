@@ -10,3 +10,4 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
+      - ./assets:/app/assets

@@ -4,18 +4,25 @@ from os.path import splitext
 from pathlib import Path
 
 import streamlit as st
+import streamlit_authenticator as stauth
+import yaml
 from PIL import Image, ImageEnhance
 from pillow_heif import register_heif_opener
-import streamlit_authenticator as stauth
-
-import yaml
 from yaml.loader import SafeLoader
+
+from admin_page import admin_page
 
 from presets import presets
 
-asset_list = directories = ['Custom'] + [d.name for d in Path('./assets').iterdir() if d.is_dir()]
-
 register_heif_opener()
+
+# Set the assets directory path
+assets_dir = Path('./assets')
+
+
+# Get the list of assets (presets)
+def get_asset_list():
+    return [d.name for d in assets_dir.iterdir() if d.is_dir()]
 
 
 def crop_image(img, ratio_width, ratio_height):
@@ -91,6 +98,7 @@ def create_zip(images, filenames):
 
 
 def main():
+    asset_select = ['Custom'] + get_asset_list()
     ratio_options = ["1:1", "4:3", "3:4", "16:9", "9:16", "2:1", "1:2", "Custom"]
     selected_ratio = st.selectbox("Select Aspect Ratio (width:height)", ratio_options)
 
@@ -120,7 +128,7 @@ def main():
 
     if watermark_option:
         with st.expander("Watermark Options", expanded=True, icon='📌'):
-            selected_preset = st.selectbox("Set Watermark Preset", asset_list)
+            selected_preset = st.selectbox("Set Watermark Preset", asset_select)
             watermark_file = st.file_uploader("Upload Watermark", type=image_formats,
                                               disabled=selected_preset != "Custom")
             if selected_preset != 'Custom':
@@ -146,7 +154,8 @@ def main():
 
     if pattern_option:
         with st.expander('Pattern Options', expanded=True, icon='🎨'):
-            selected_pattern = st.selectbox('Set Pattern Preset', asset_list, index=asset_list.index(selected_preset))
+            selected_pattern = st.selectbox('Set Pattern Preset', asset_select,
+                                            index=asset_select.index(selected_preset))
             pattern_file = st.file_uploader('Upload Pattern', type=image_formats,
                                             disabled=selected_pattern != 'Custom')
             if selected_pattern != 'Custom':
@@ -203,7 +212,8 @@ def main():
                     cropped_img = crop_image(img, ratio_width, ratio_height)
 
                     if pattern_option and pattern_file:
-                        cropped_img = add_on_top(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left', fill=True)
+                        cropped_img = add_on_top(cropped_img, pattern, pattern_transparency, 1.0, '↖️ top left',
+                                                 fill=True)
 
                     if watermark_option and watermark_file:
                         cropped_img = add_on_top(cropped_img, watermark, transparency, size_ratio, position, padding)
@@ -265,8 +275,7 @@ if __name__ == "__main__":
 
     if authentication_status:
         if username == 'admin':
-            st.write('You are logged in as an admin')
-            st.write('You can add, remove, or modify presets')
+            admin_page()
         else:
             main()
 
