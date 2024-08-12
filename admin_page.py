@@ -83,10 +83,28 @@ def admin_page():
 
         # Show existing logo and pattern
         st.subheader(f"Preset: {selected_preset}")
-        if (preset_dir / "logo/logo.png").exists():
-            st.image(str(preset_dir / "logo/logo.png"), caption="Logo", use_column_width=True)
-        if (preset_dir / "pattern/pattern.png").exists():
-            st.image(str(preset_dir / "pattern/pattern.png"), caption="Pattern", use_column_width=True)
+        logo_path = preset_dir / "logo/logo.png"
+        pattern_path = preset_dir / "pattern/pattern.png"
+
+        if logo_path.exists():
+            st.image(str(logo_path), caption="Logo", use_column_width=True)
+            with open(logo_path, "rb") as file:
+                st.download_button(
+                    label="Download Logo",
+                    data=file,
+                    file_name="logo.png",
+                    mime="image/png"
+                )
+
+        if pattern_path.exists():
+            st.image(str(pattern_path), caption="Pattern", use_column_width=True)
+            with open(pattern_path, "rb") as file:
+                st.download_button(
+                    label="Download Pattern",
+                    data=file,
+                    file_name="pattern.png",
+                    mime="image/png"
+                )
 
         # Upload new files to modify preset
         st.subheader("Modify Preset")
