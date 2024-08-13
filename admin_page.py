@@ -11,11 +11,17 @@ def get_asset_list():
     asset_list.sort()  # Sort inplace (better performance than sorted())
     return asset_list
 
+
 # Upload and save a new file to a preset directory
 def upload_file(directory, file_type):
+    # Ensure directory exists, if not, create it
+    file_type_dir = directory / file_type
+    file_type_dir.mkdir(parents=True, exist_ok=True)
+
+    # File upload logic
     file = st.file_uploader(f"Upload {file_type}", type=["png"], key=file_type)
     if file:
-        file_path = directory / f"{file_type}/{file_type}.png"
+        file_path = file_type_dir / f"{file_type}.png"
         with open(file_path, "wb") as f:
             f.write(file.read())
         st.success(f"{file_type}.png updated successfully!")
