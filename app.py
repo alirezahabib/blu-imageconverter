@@ -289,4 +289,4 @@ if __name__ == "__main__":
     elif not authentication_status:
         st.error('Username/password is incorrect')
 
-    st.write("Made with ❤️ at [Bluprint](https://bluprint.ir)")
+    st.write("Made with ❤️ at [DSEA](https://bluprint.ir)")
