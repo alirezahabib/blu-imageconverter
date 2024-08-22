@@ -17,14 +17,16 @@ def upload_file(directory, file_type):
     # Ensure directory exists, if not, create it
     file_type_dir = directory / file_type
     file_type_dir.mkdir(parents=True, exist_ok=True)
+    file_path = file_type_dir / f"{file_type}.png"
 
     # File upload logic
     file = st.file_uploader(f"Upload {file_type}", type=["png"], key=file_type)
     if file:
-        file_path = file_type_dir / f"{file_type}.png"
-        with open(file_path, "wb") as f:
-            f.write(file.read())
-        st.success(f"{file_type}.png updated successfully!")
+        if st.button(f"Update {file_type}"):
+            with open(file_path, "wb") as f:
+                f.write(file.read())
+            st.success(f"{file_type}.png updated successfully!")
+            st.rerun()
 
 
 # Delete a preset
