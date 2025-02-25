@@ -138,7 +138,7 @@ def main():
             if watermark_file:
                 watermark = Image.open(watermark_file)
             if selected_preset != 'Custom':
-                st.image(watermark_file, use_container_width=True)
+                st.image(watermark_file, use_column_width=True)
 
             transparency = st.slider('Set Watermark Transparency', 0.0, 1.0,
                                      presets.get(selected_preset, {}).get('transparency', 0.5))
@@ -165,7 +165,7 @@ def main():
             if pattern_file:
                 pattern = Image.open(pattern_file)
             if selected_preset != 'Custom':
-                st.image(pattern_file, use_container_width=True)
+                st.image(pattern_file, use_column_width=True)
 
             pattern_transparency = st.slider('Set Pattern Transparency', 0.0, 1.0,
                                              presets.get(selected_pattern, {}).get('transparency', 0.5))
@@ -190,7 +190,7 @@ def main():
             cropped_img.save(img_byte_arr, format='WEBP', quality=quality)
             img_byte_arr.seek(0)
 
-            st.image(cropped_img, caption=f'Result of: {uploaded_files[0].name}', use_container_width=True)
+            st.image(cropped_img, caption=f'Result of: {uploaded_files[0].name}', use_column_width=True)
 
             original_name = splitext(uploaded_files[0].name)[0]
             name = original_name
