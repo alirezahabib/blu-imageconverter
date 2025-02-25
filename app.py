@@ -273,7 +273,8 @@ if __name__ == "__main__":
         config['preauthorized']
     )
 
-    name, authentication_status, username = authenticator.login('main')
+    authenticator.login()
+    name, authentication_status, username = st.session_state['name'], st.session_state['authentication_status'], st.session_state['username']
 
     if authentication_status:
         if username == 'admin':
@@ -289,4 +290,4 @@ if __name__ == "__main__":
     elif not authentication_status:
         st.error('Username/password is incorrect')
 
-    st.write("Made with ❤️ at [DSEA](https://bluprint.ir)")
+    st.write("Made with ❤️ at [DSEA](https://dsea.ir)")
