@@ -5,7 +5,7 @@ services:
     container_name: blu-imageconverter
     restart: always
     ports:
-      - "8501:8501"
+      - "[::1]:8501:8501"
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
