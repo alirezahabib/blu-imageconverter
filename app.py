@@ -256,11 +256,11 @@ def main():
 
 if __name__ == "__main__":
     st.set_page_config(
-        page_title="Bluprint Webp Crop and Convert",
+        page_title="DSEA Webp Crop and Convert",
         page_icon="sunrise_over_mountains",
         # layout="wide",
     )
-    st.title("Bluprint Webp Crop and Convert")
+    st.title("DSEA Webp Crop and Convert")
 
     with open('./users.yaml') as file:
         config = yaml.load(file, Loader=SafeLoader)
